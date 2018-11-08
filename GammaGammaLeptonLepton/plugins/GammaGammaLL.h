@@ -75,6 +75,9 @@
 
 // CT-PPS objects
 #include "DataFormats/CTPPSReco/interface/TotemRPLocalTrack.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSPixelLocalTrack.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSLocalTrackLite.h"
+#include "DataFormats/CTPPSReco/interface/CTPPSDiamondLocalTrack.h"
 
 #include "DiffractiveForwardAnalysis/GammaGammaLeptonLepton/interface/HLTMatcher.h"
 #include "DiffractiveForwardAnalysis/GammaGammaLeptonLepton/interface/AnalysisEvent.h"
@@ -82,6 +85,10 @@
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/TransientTrack/interface/TransientTrack.h"
 #include "RecoVertex/KalmanVertexFit/interface/KalmanVertexFitter.h"
+
+// Trigger
+#include "FWCore/Utilities/interface/RegexMatch.h"
+#include "FWCore/Framework/interface/TriggerNamesService.h"
 
 // LHC fill information
 //#include "DataFormats/Common/interface/ConditionsInEdm.h" // L1 method

@@ -64,7 +64,8 @@ GammaGammaLL::GammaGammaLL( const edm::ParameterSet& iConfig ) :
   dataPileupPath_     ( iConfig.getParameter<std::string>( "datapupath" ) ),
   nCandidates_( 0 )
 {
-  evt_.nHLT = triggersList_.size();	
+
+  //evt_.nHLT = triggersList_.size();	
 
   // Generator level
   if ( runOnMC_ ) {
@@ -108,6 +109,9 @@ GammaGammaLL::GammaGammaLL( const edm::ParameterSet& iConfig ) :
     lumiWeights_ = edm::LumiReWeighting(mcPileupFile_, dataPileupFile_, mcPileupPath_, dataPileupPath_ );
   }
 
+  consumes<edm::DetSetVector<CTPPSPixelLocalTrack>>(edm::InputTag("ctppsPixelLocalTracks"));
+  consumes<edm::DetSetVector<CTPPSDiamondLocalTrack> >(edm::InputTag("ctppsDiamondLocalTracks"));
+
   // Book the output tree
   usesResource( "TFileService" );
   edm::Service<TFileService> fs;
@@ -124,9 +128,14 @@ GammaGammaLL::~GammaGammaLL()
 void
 GammaGammaLL::lookAtTriggers( const edm::Event& iEvent, const edm::EventSetup& iSetup )
 {
+
+  bool debug = false;
+ 
   // Get the trigger information from the event
   edm::Handle<edm::TriggerResults> hltResults;
   iEvent.getByToken( triggerResultsToken_, hltResults);
+
+  /*
   const edm::TriggerNames& trigNames = iEvent.triggerNames(*hltResults);
 
   std::ostringstream os;
@@ -145,6 +154,53 @@ GammaGammaLL::lookAtTriggers( const edm::Event& iEvent, const edm::EventSetup& i
     evt_.HLT_Prescl[trigNum] = (prescale_set<0) ? 0. : hltConfig_.prescaleValue(prescale_set, trigNames.triggerNames().at( i ) ); //FIXME
   }
   LogDebug( "GammaGammaLL" ) << os.str();
+  */
+
+  if( hltResults.isValid() ){
+
+    unsigned int nSize = hltResults->size();
+    const edm::TriggerNames& triggerNames = iEvent.triggerNames(*hltResults);
+
+    size_t idxpath = 0;
+    std::vector<std::string>::const_iterator hltpath = triggersList_.begin();
+    std::vector<std::string>::const_iterator hltpaths_end = triggersList_.end();
+    for(; hltpath != hltpaths_end && evt_.nHLT < ggll::AnalysisEvent::MAX_HLT; ++hltpath,++idxpath){
+      std::string resolvedPathName;
+      if( edm::is_glob( *hltpath ) ){
+	std::vector< std::vector<std::string>::const_iterator > matches = edm::regexMatch(triggerNames.triggerNames(), *hltpath);
+	if( matches.empty() ){
+	  if (debug) edm::LogWarning("Configuration") << "Could not find trigger " << *hltpath << " in the path list.\n";
+	}
+	else if( matches.size() > 1)
+	  throw cms::Exception("Configuration") << "HLT path type " << *hltpath << " not unique\n";
+	else resolvedPathName = *(matches[0]);
+      } else{
+	resolvedPathName = *hltpath;
+      }
+
+      unsigned int idx_HLT = triggerNames.triggerIndex(resolvedPathName);
+      if (idx_HLT < nSize){
+	int accept_HLT = ( hltResults->wasrun(idx_HLT) && hltResults->accept(idx_HLT) ) ? 1 : 0;
+	int prescale_set = hltPrescale_.prescaleSet( iEvent, iSetup);
+	evt_.HLT_Accept[evt_.nHLT] = accept_HLT;
+	if(debug) std::cout <<  (*hltpath).c_str() << ": " << evt_.HLT_Accept[evt_.nHLT] << ", Index: "<< evt_.nHLT << std::endl;
+	if(runOnMC_){
+	  evt_.HLT_Prescl[evt_.nHLT] = 1.;
+	}else{
+	  evt_.HLT_Prescl[evt_.nHLT] = (prescale_set<0) ? 0. : hltConfig_.prescaleValue(prescale_set, (*hltpath).c_str() );
+	}
+      }else{
+	evt_.HLT_Accept[evt_.nHLT] = -1;
+	evt_.HLT_Prescl[evt_.nHLT] = -1;
+	if(debug) std::cout <<  (*hltpath).c_str() << ": " << evt_.HLT_Accept[evt_.nHLT] << ", Index: "<< evt_.nHLT << std::endl;
+      }
+      evt_.nHLT++;
+    }
+
+  }else{
+    if (debug) std::cout << "\n No valid trigger result.\n" <<std::endl;
+  }
+
 }
 
 // ------------ method called for each event  ------------
@@ -287,13 +343,15 @@ GammaGammaLL::analyzeMCEventContent( const edm::Event& iEvent )
       evt_.GenPhotCand_phi[evt_.nGenPhotCand] = genPart->phi();
       evt_.nGenPhotCand++;
     }
+    /*
     if ( genPart->pdgId() == 2212 && fabs( genPart->pz() ) > 3000. ) {
       // Kinematic quantities computation
       // xi = fractional momentum loss
-      /*if ( genPart->pz() > 0. ) xi = 1.-2.*genPart->pz()/sqrts_;
-      else xi = 1.+2.*genPart->pz()/sqrts_;
-      t = -( std::pow( genPart->pt(), 2 )+std::pow( genPart->mass()*xi, 2 ) )/( 1.-xi );*/
+      //if ( genPart->pz() > 0. ) xi = 1.-2.*genPart->pz()/sqrts_;
+      //else xi = 1.+2.*genPart->pz()/sqrts_;
+      //t = -( std::pow( genPart->pt(), 2 )+std::pow( genPart->mass()*xi, 2 ) )/( 1.-xi );
     }
+    */
   }
 
   bool foundGenCandPairInEvent = false;
@@ -536,6 +594,7 @@ GammaGammaLL::fetchProtons( const edm::Event& iEvent )
   edm::Handle<edm::DetSetVector<TotemRPLocalTrack> > rplocaltracks;
   iEvent.getByToken( totemRPHitToken_, rplocaltracks);
 
+  /*
   evt_.nLocalProtCand = 0;
   for ( const auto rplocaltrack : *rplocaltracks ) {
     const CTPPSDetId det_id( rplocaltrack.detId() );
@@ -563,6 +622,83 @@ GammaGammaLL::fetchProtons( const edm::Event& iEvent )
     }
   }
   LogDebug( "GammaGammaLL" ) << "Passed TOTEM RP info retrieval stage. Got " << evt_.nLocalProtCand << " local track(s)";
+  */
+
+  evt_.nRPStripTrack = 0;
+  for ( const auto rplocaltrack : *rplocaltracks ) {
+    const CTPPSDetId det_id( rplocaltrack.detId() );
+    const unsigned short arm = det_id.arm(), // 0->L, 1->R (  2/  3->45, 102/103->56)
+	  pot = det_id.rp();  // 0->F, 1->N (  2/102-> N,   3/103-> F)
+    for ( const auto track : rplocaltrack ) {
+      if ( evt_.nRPStripTrack == ggll::AnalysisEvent::MAX_LOCALPCAND_STRIPS-1 ) {
+	edm::LogWarning( "GammaGammaLL" ) << "maximum number of local tracks in RPs is reached! increase MAX_LOCALPCAND_STRIPS=" << ggll::AnalysisEvent::MAX_LOCALPCAND_STRIPS << " in GammaGammaLL.h";
+	break;
+      }
+      if ( !track.isValid() ) continue;
+      evt_.RPStripTrack_x[evt_.nRPStripTrack] = ( track.getX0()/1.e3 );
+      evt_.RPStripTrack_y[evt_.nRPStripTrack] = ( track.getY0() )/1.e3;
+      evt_.RPStripTrack_xSigma[evt_.nRPStripTrack] = ( track.getX0Sigma()/1.e3 );
+      evt_.RPStripTrack_ySigma[evt_.nRPStripTrack] = ( track.getY0Sigma()/1.e3 );
+      evt_.RPStripTrack_arm[evt_.nRPStripTrack] = arm;
+      evt_.RPStripTrack_pot[evt_.nRPStripTrack] = pot;
+      evt_.nRPStripTrack++;
+      LogDebug( "GammaGammaLL" ) << "Proton track candidate with origin: ( " << track.getX0() << ", " << track.getY0() << ", " << track.getZ0() << " ) extracted!";
+    }
+  }
+
+  edm::Handle< edm::DetSetVector<CTPPSPixelLocalTrack> > rppixellocaltracks;
+  iEvent.getByLabel("ctppsPixelLocalTracks",rppixellocaltracks);
+  evt_.nRPPixelTrack = 0;
+  for ( const auto rppixellocaltrack : *rppixellocaltracks ) {
+    const CTPPSDetId det_id( rppixellocaltrack.detId() );
+    const unsigned short arm = det_id.arm(), // 0->L, 1->R (  2/  3->45, 102/103->56)
+	  pot = det_id.rp();  // 0->F, 1->N (  2/102-> N,   3/103-> F)
+    for ( const auto track : rppixellocaltrack ) {
+      if ( evt_.nRPPixelTrack == ggll::AnalysisEvent::MAX_LOCALPCAND_PIXELS-1 ) {
+	edm::LogWarning( "GammaGammaLL" ) << "maximum number of local PIXELS tracks in RPs is reached! increase MAX_LOCALPCAND_PIXELS=" << ggll::AnalysisEvent::MAX_LOCALPCAND_PIXELS << " in GammaGammaLL.h";
+	break;
+      }
+      if ( !track.isValid() ) continue;
+      evt_.RPPixelTrack_x[evt_.nRPPixelTrack] = ( track.getX0() );
+      evt_.RPPixelTrack_y[evt_.nRPPixelTrack] = ( track.getY0() );
+      evt_.RPPixelTrack_xSigma[evt_.nRPPixelTrack] = ( track.getX0Sigma() );
+      evt_.RPPixelTrack_ySigma[evt_.nRPPixelTrack] = ( track.getY0Sigma() );
+      evt_.RPPixelTrack_arm[evt_.nRPPixelTrack] = arm;
+      evt_.RPPixelTrack_pot[evt_.nRPPixelTrack] = pot;
+      evt_.nRPPixelTrack++;
+      LogDebug( "GammaGammaLL" ) << "Proton track candidate with origin: ( " << track.getX0() << ", " << track.getY0() << ", " << track.getZ0() << " ) extracted!";
+    }
+  }
+
+  edm::Handle< edm::DetSetVector<CTPPSDiamondLocalTrack> > rptiminglocaltracks;
+  iEvent.getByLabel("ctppsDiamondLocalTracks", rptiminglocaltracks);
+  evt_.nRPTimingTrack = 0;
+  for ( const auto rptiminglocaltrack : *rptiminglocaltracks ) {
+    const CTPPSDetId det_id( rptiminglocaltrack.detId() );
+    const unsigned short arm = det_id.arm(), // 0->L, 1->R (  2/  3->45, 102/103->56)
+	  pot = det_id.rp();  // 0->F, 1->N (  2/102-> N,   3/103-> F)
+    for ( const auto track : rptiminglocaltrack ) {
+      if ( evt_.nRPTimingTrack == ggll::AnalysisEvent::MAX_LOCALPCAND_TIMING-1 ) {
+	edm::LogWarning( "GammaGammaLL" ) << "maximum number of local TIMING tracks in RPs is reached! increase MAX_LOCALPCAND_TIMING=" << ggll::AnalysisEvent::MAX_LOCALPCAND_TIMING << " in GammaGammaLL.h";
+	break;
+      }
+      if ( !track.isValid() ) continue;
+      evt_.RPTimingTrack_x[evt_.nRPTimingTrack] = ( track.getX0() );
+      evt_.RPTimingTrack_y[evt_.nRPTimingTrack] = ( track.getY0() );
+      evt_.RPTimingTrack_xSigma[evt_.nRPTimingTrack] = ( track.getX0Sigma() );
+      evt_.RPTimingTrack_ySigma[evt_.nRPTimingTrack] = ( track.getY0Sigma() );
+      evt_.RPTimingTrack_Time[evt_.nRPTimingTrack] = track.getT();
+      evt_.RPTimingTrack_arm[evt_.nRPTimingTrack] = arm;
+      evt_.RPTimingTrack_pot[evt_.nRPTimingTrack] = pot;
+      evt_.nRPTimingTrack++;
+      LogDebug( "GammaGammaLL" ) << "Proton track candidate with origin: ( " << track.getX0() << ", " << track.getY0() << ", " << track.getZ0() << " ) extracted!";
+    }
+  }
+
+  LogDebug( "GammaGammaLL" ) << "Passed TOTEM RP info retrieval stage. Got " << evt_.nRPStripTrack << " strips local track(s)";
+  LogDebug( "GammaGammaLL" ) << "Passed TOTEM RP info retrieval stage. Got " << evt_.nRPPixelTrack << " pixels local track(s)";
+  LogDebug( "GammaGammaLL" ) << "Passed TOTEM RP info retrieval stage. Got " << evt_.nRPTimingTrack << " timing local track(s)";
+
 }
 
 void
@@ -572,7 +708,11 @@ GammaGammaLL::fetchJets( const edm::Event& iEvent )
   edm::Handle<edm::View<pat::Jet> > jetColl; // PAT
   iEvent.getByToken( jetToken_, jetColl );
 
-  double totalJetEnergy = 0., HEJet_pt = 0., HEJet_eta = 0., HEJet_phi = 0., HEJet_e = 0.;
+  //double totalJetEnergy = 0., HEJet_pt = 0., HEJet_eta = 0., HEJet_phi = 0., HEJet_e = 0.;
+  double totalJetEnergy = 0., HEJet_pt = 0., HEJet_eta = 0., HEJet_phi = 0., HEJet_e = 0., HEJet_vz = -999;
+  double vz_mean = -999.;
+  double pt2_z = 0.;
+  double pt2 = 0.;
 
   for ( unsigned int i = 0; i < jetColl->size() && evt_.nJetCand < ggll::AnalysisEvent::MAX_JETS; ++i ) {
     const edm::Ptr<pat::Jet> jet = jetColl->ptrAt( i);
@@ -582,12 +722,25 @@ GammaGammaLL::fetchJets( const edm::Event& iEvent )
     evt_.JetCand_eta[evt_.nJetCand] = jet->eta();
     evt_.JetCand_phi[evt_.nJetCand] = jet->phi();
     totalJetEnergy += evt_.JetCand_e[evt_.nJetCand];
+
+    reco::TrackRefVector tracks = jet->associatedTracks();
+    reco::TrackRefVector::const_iterator itTrack = tracks.begin();
+    for (; itTrack != tracks.end(); ++itTrack) {
+      pt2 += (*itTrack)->pt()*(*itTrack)->pt();
+      pt2_z += (*itTrack)->pt()*(*itTrack)->pt()*(*itTrack)->vz();
+    }
+
+    if (pt2 > 0.) vz_mean = pt2_z/pt2;
+
+    evt_.JetCand_vz[evt_.nJetCand] = vz_mean;
+
     // Find kinematics quantities associated to the highest energy jet
     if ( evt_.JetCand_e[evt_.nJetCand] > HEJet_e ) {
       HEJet_e = evt_.JetCand_e[evt_.nJetCand];
       HEJet_pt = evt_.JetCand_pt[evt_.nJetCand];
       HEJet_eta = evt_.JetCand_eta[evt_.nJetCand];
       HEJet_phi = evt_.JetCand_phi[evt_.nJetCand];
+      HEJet_vz = evt_.JetCand_vz[evt_.nJetCand];
     }
     evt_.nJetCand++;
   }
@@ -595,6 +748,7 @@ GammaGammaLL::fetchJets( const edm::Event& iEvent )
   evt_.HighestJet_eta = HEJet_eta;
   evt_.HighestJet_phi = HEJet_phi;
   evt_.HighestJet_e = HEJet_e;
+  evt_.HighestJet_vz = HEJet_vz;
   evt_.SumJet_e = totalJetEnergy;
 
   LogDebug( "GammaGammaLL" ) << "Passed Loop on jets";
@@ -797,6 +951,7 @@ GammaGammaLL::newTracksInfoRetrieval( int l1id, int l2id )
   evt_.Pair_dpt[evt_.nPair] = fabs( l1.Pt()-l2.Pt() );
   evt_.Pair_3Dangle[evt_.nPair] = l1.Angle( l2.Vect() )/M_PI;
 
+  /*
   for ( unsigned int j = 0; j < evt_.nPhotonCand; ++j ) {
     TLorentzVector pho;
     pho.SetPtEtaPhiE( evt_.PhotonCand_pt[j], evt_.PhotonCand_eta[j], evt_.PhotonCand_phi[j], evt_.PhotonCand_e[j] );
@@ -805,6 +960,7 @@ GammaGammaLL::newTracksInfoRetrieval( int l1id, int l2id )
     //std::cout << "Photon " << j << " added to pair " << evt_.PairGamma_pair[evt_.nPairGamma] << " to give a mass = " << evt_.PairGamma_mass[evt_.nPairGamma] << std::endl;
     evt_.nPairGamma++;
   }
+  */
 
   evt_.nPair++;
   nCandidates_++;

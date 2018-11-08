@@ -55,10 +55,16 @@ namespace ggll
       static constexpr unsigned int MAX_GENPRO = 8;
       /// Maximum number of jets per event
       static constexpr unsigned int MAX_JETS = 40;
-      /// Maximum number of reconstructed local tracks in RPs
-      static constexpr unsigned int MAX_LOCALPCAND = 25;
+      /*/// Maximum number of reconstructed local tracks in RPs
+      static constexpr unsigned int MAX_LOCALPCAND = 25;*/
+      /// Maximum number of reconstructed local tracks in RPs strips
+      static constexpr unsigned int MAX_LOCALPCAND_STRIPS = 25;
+      /// Maximum number of reconstructed local tracks in RPs strips
+      static constexpr unsigned int MAX_LOCALPCAND_TIMING = 25;
+      /// Maximum number of reconstructed local tracks in RPs pixels
+      static constexpr unsigned int MAX_LOCALPCAND_PIXELS = 25;
       /// Maximum number of reconstructed local tracks pairs in RPs
-      static constexpr unsigned int MAX_LOCALPPAIRCAND = 10;
+      static constexpr unsigned int MAX_LOCALPPAIRCAND = 25;
 
       ////// Tree contents //////
 
@@ -179,18 +185,37 @@ namespace ggll
 
       // Jets/MET quantities
       unsigned int nJetCand;
-      double JetCand_pt[MAX_JETS], JetCand_eta[MAX_JETS], JetCand_phi[MAX_JETS], JetCand_e[MAX_JETS];
-      double HighestJet_pt, HighestJet_eta, HighestJet_phi, HighestJet_e;
+      //double JetCand_pt[MAX_JETS], JetCand_eta[MAX_JETS], JetCand_phi[MAX_JETS], JetCand_e[MAX_JETS];
+      double JetCand_pt[MAX_JETS], JetCand_eta[MAX_JETS], JetCand_phi[MAX_JETS], JetCand_e[MAX_JETS], JetCand_vz[MAX_JETS];
+      //double HighestJet_pt, HighestJet_eta, HighestJet_phi, HighestJet_e;
+      double HighestJet_pt, HighestJet_eta, HighestJet_phi, HighestJet_e, HighestJet_vz;
       double SumJet_e;
       double Etmiss, Etmiss_phi, Etmiss_significance;
 
       // CTPPS quantities
+      /*
       unsigned int nLocalProtCand;
       double LocalProtCand_x[MAX_LOCALPCAND], LocalProtCand_y[MAX_LOCALPCAND], LocalProtCand_z[MAX_LOCALPCAND];
       double LocalProtCand_xSigma[MAX_LOCALPCAND], LocalProtCand_ySigma[MAX_LOCALPCAND];
       double LocalProtCand_Tx[MAX_LOCALPCAND], LocalProtCand_Ty[MAX_LOCALPCAND];
       double LocalProtCand_TxSigma[MAX_LOCALPCAND], LocalProtCand_TySigma[MAX_LOCALPCAND];
       int LocalProtCand_arm[MAX_LOCALPCAND], LocalProtCand_pot[MAX_LOCALPCAND];
+      */
+      unsigned int nRPStripTrack;
+      double RPStripTrack_x[MAX_LOCALPCAND_STRIPS], RPStripTrack_y[MAX_LOCALPCAND_STRIPS];
+      double RPStripTrack_xSigma[MAX_LOCALPCAND_STRIPS], RPStripTrack_ySigma[MAX_LOCALPCAND_STRIPS];
+      int RPStripTrack_arm[MAX_LOCALPCAND_STRIPS], RPStripTrack_pot[MAX_LOCALPCAND_STRIPS];
+
+      unsigned int nRPPixelTrack;
+      double RPPixelTrack_x[MAX_LOCALPCAND_PIXELS], RPPixelTrack_y[MAX_LOCALPCAND_PIXELS];
+      double RPPixelTrack_xSigma[MAX_LOCALPCAND_PIXELS], RPPixelTrack_ySigma[MAX_LOCALPCAND_PIXELS];
+      int RPPixelTrack_arm[MAX_LOCALPCAND_PIXELS], RPPixelTrack_pot[MAX_LOCALPCAND_PIXELS];
+
+      unsigned int nRPTimingTrack;
+      double RPTimingTrack_x[MAX_LOCALPCAND_TIMING], RPTimingTrack_y[MAX_LOCALPCAND_TIMING];
+      double RPTimingTrack_xSigma[MAX_LOCALPCAND_TIMING], RPTimingTrack_ySigma[MAX_LOCALPCAND_TIMING];
+      double RPTimingTrack_Time[MAX_LOCALPCAND_TIMING];
+      int RPTimingTrack_arm[MAX_LOCALPCAND_TIMING], RPTimingTrack_pot[MAX_LOCALPCAND_TIMING];
 
       void clear() {
         // event-level branches
@@ -322,15 +347,18 @@ namespace ggll
         // jets collection
         nJetCand = 0;
         for ( unsigned int i = 0; i < MAX_JETS; ++i ) {
-          JetCand_pt[i] = JetCand_eta[i] = JetCand_phi[i] = JetCand_e[i] = -999;
+          //JetCand_pt[i] = JetCand_eta[i] = JetCand_phi[i] = JetCand_e[i] = -999;
+	  JetCand_pt[i] = JetCand_eta[i] = JetCand_phi[i] = JetCand_e[i] = JetCand_vz[i] = -999;
         }
-        HighestJet_pt = HighestJet_eta = HighestJet_phi = HighestJet_e = -999.;
+        //HighestJet_pt = HighestJet_eta = HighestJet_phi = HighestJet_e = -999.;
+	HighestJet_pt = HighestJet_eta = HighestJet_phi = HighestJet_e = HighestJet_vz = -999.;
         SumJet_e = 0.;
 
         // missing ET
         Etmiss = Etmiss_phi = Etmiss_significance = -999.;
 
         // CTPPS strips leaves
+        /*
         nLocalProtCand = 0;
         for ( unsigned int i = 0; i < MAX_LOCALPCAND; ++i ) {
           LocalProtCand_x[i] = LocalProtCand_y[i] = LocalProtCand_z[i] = -999.;
@@ -339,7 +367,30 @@ namespace ggll
           LocalProtCand_TxSigma[i] = LocalProtCand_TySigma[i] = -999.;
           LocalProtCand_arm[i] = LocalProtCand_pot[i] = -1;
         }
+        */
+	nRPStripTrack = 0;
+	for ( unsigned int i = 0; i < MAX_LOCALPCAND_STRIPS; ++i ) {
+	  RPStripTrack_x[i] = RPStripTrack_y[i] = -999.;
+	  RPStripTrack_xSigma[i] = RPStripTrack_ySigma[i] = -999.;
+	  RPStripTrack_arm[i] = RPStripTrack_pot[i] = -1;
+	}
+
+	nRPPixelTrack = 0;
+	for ( unsigned int i = 0; i < MAX_LOCALPCAND_PIXELS; ++i ) {
+	  RPPixelTrack_x[i] = RPPixelTrack_y[i] = -999.;
+	  RPPixelTrack_xSigma[i] = RPPixelTrack_ySigma[i] = -999.;
+	  RPPixelTrack_arm[i] = RPPixelTrack_pot[i] = -1;
+	}
+
+	nRPTimingTrack = 0;
+	for ( unsigned int i = 0; i < MAX_LOCALPCAND_TIMING; ++i ) {
+	  RPTimingTrack_x[i] = RPTimingTrack_y[i] = -999.;
+	  RPTimingTrack_xSigma[i] = RPTimingTrack_ySigma[i] = -999.;
+	  RPTimingTrack_Time[i] = -1.;
+	  RPTimingTrack_arm[i] = RPTimingTrack_pot[i] = -1;
+	}
       }
+
       void attach( TTree* tree, TreeType tt, bool mc ) {
         if ( !tree ) return;
 
@@ -504,6 +555,7 @@ namespace ggll
         }
 
         if ( !mc ) {
+          /*
           tree->Branch( "nLocalProtCand", &nLocalProtCand, "nLocalProtCand/i" );
           tree->Branch( "LocalProtCand_x", LocalProtCand_x, "LocalProtCand_x[nLocalProtCand]/D" );
           tree->Branch( "LocalProtCand_y", LocalProtCand_y, "LocalProtCand_y[nLocalProtCand]/D" );
@@ -516,6 +568,31 @@ namespace ggll
           tree->Branch( "LocalProtCand_Ty", LocalProtCand_Ty, "LocalProtCand_Ty[nLocalProtCand]/D" );
           tree->Branch( "LocalProtCand_TxSigma", LocalProtCand_TxSigma, "LocalProtCand_TxSigma[nLocalProtCand]/D" );
           tree->Branch( "LocalProtCand_TySigma", LocalProtCand_TySigma, "LocalProtCand_TySigma[nLocalProtCand]/D" );
+          */
+	  tree->Branch( "nRPStripTrack", &nRPStripTrack, "nRPStripTrack/i" );
+	  tree->Branch( "RPStripTrack_x", RPStripTrack_x, "RPStripTrack_x[nRPStripTrack]/D" );
+	  tree->Branch( "RPStripTrack_y", RPStripTrack_y, "RPStripTrack_y[nRPStripTrack]/D" );
+	  tree->Branch( "RPStripTrack_xSigma", RPStripTrack_xSigma, "RPStripTrack_xSigma[nRPStripTrack]/D" );
+	  tree->Branch( "RPStripTrack_ySigma", RPStripTrack_ySigma, "RPStripTrack_ySigma[nRPStripTrack]/D" );
+	  tree->Branch( "RPStripTrack_arm", RPStripTrack_arm, "RPStripTrack_arm[nRPStripTrack]/I" );
+	  tree->Branch( "RPStripTrack_pot", RPStripTrack_pot, "RPStripTrack_pot[nRPStripTrack]/I" );
+
+	  tree->Branch( "nRPTimingTrack", &nRPTimingTrack, "nRPTimingTrack/i" );
+	  tree->Branch( "RPTimingTrack_x", RPTimingTrack_x, "RPTimingTrack_x[nRPTimingTrack]/D" );
+	  tree->Branch( "RPTimingTrack_y", RPTimingTrack_y, "RPTimingTrack_y[nRPTimingTrack]/D" );
+	  tree->Branch( "RPTimingTrack_xSigma", RPTimingTrack_xSigma, "RPTimingTrack_xSigma[nRPTimingTrack]/D" );
+	  tree->Branch( "RPTimingTrack_ySigma", RPTimingTrack_ySigma, "RPTimingTrack_ySigma[nRPTimingTrack]/D" );
+	  tree->Branch( "RPTimingTrack_arm", RPTimingTrack_arm, "RPTimingTrack_arm[nRPTimingTrack]/I" );
+	  tree->Branch( "RPTimingTrack_pot", RPTimingTrack_pot, "RPTimingTrack_pot[nRPTimingTrack]/I" );
+	  tree->Branch( "RPTimingTrack_Time", RPTimingTrack_Time, "RPTimingTrack_Time[nRPTimingTrack]/D" );
+
+	  tree->Branch( "nRPPixelTrack", &nRPPixelTrack, "nRPPixelTrack/i" );
+	  tree->Branch( "RPPixelTrack_x", RPPixelTrack_x, "RPPixelTrack_x[nRPPixelTrack]/D" );
+	  tree->Branch( "RPPixelTrack_y", RPPixelTrack_y, "RPPixelTrack_y[nRPPixelTrack]/D" );
+	  tree->Branch( "RPPixelTrack_xSigma", RPPixelTrack_xSigma, "RPPixelTrack_xSigma[nRPPixelTrack]/D" );
+	  tree->Branch( "RPPixelTrack_ySigma", RPPixelTrack_ySigma, "RPPixelTrack_ySigma[nRPPixelTrack]/D" );
+	  tree->Branch( "RPPixelTrack_arm", RPPixelTrack_arm, "RPPixelTrack_arm[nRPPixelTrack]/I" );
+	  tree->Branch( "RPPixelTrack_pot", RPPixelTrack_pot, "RPPixelTrack_pot[nRPPixelTrack]/I" );
         }
 
         // Extra tracks on vertex's information
@@ -547,10 +624,12 @@ namespace ggll
         tree->Branch( "JetCand_eta", JetCand_eta, "JetCand_eta[nJetCand]/D" );
         tree->Branch( "JetCand_phi", JetCand_phi, "JetCand_phi[nJetCand]/D" );
         tree->Branch( "JetCand_e", JetCand_e, "JetCand_e[nJetCand]/D" );
+	tree->Branch( "JetCand_vz", JetCand_vz, "JetCand_vz[nJetCand]/D" );
         tree->Branch( "HighestJet_pt", &HighestJet_pt, "HighestJet_pt/D" );
         tree->Branch( "HighestJet_eta", &HighestJet_eta, "HighestJet_eta/D" );
         tree->Branch( "HighestJet_phi", &HighestJet_phi, "HighestJet_phi/D" );
         tree->Branch( "HighestJet_e", &HighestJet_e, "HighestJet_e/D" );
+	tree->Branch( "HighestJet_vz", &HighestJet_vz, "HighestJet_vz/D" );
         tree->Branch( "SumJet_e", &SumJet_e, "SumJet_e/D" );
         tree->Branch( "Etmiss", &Etmiss, "Etmiss/D" );
         tree->Branch( "Etmiss_phi", &Etmiss_phi, "Etmiss_phi/D" );
@@ -560,6 +639,7 @@ namespace ggll
         tree->Branch( "Weight", &Weight, "Weight/D" );
         tree->Branch( "PUWeightTrue", &PUWeightTrue, "PUWeightTrue/D" );
       }
+
       void load( TTree* tree, TreeType tt, bool mc ) {
         if ( !tree ) return;
 
@@ -724,6 +804,7 @@ namespace ggll
         }
 
         if ( !mc ) {
+          /*
           tree->SetBranchAddress( "nLocalProtCand", &nLocalProtCand );
           tree->SetBranchAddress( "LocalProtCand_x", LocalProtCand_x );
           tree->SetBranchAddress( "LocalProtCand_y", LocalProtCand_y );
@@ -736,6 +817,31 @@ namespace ggll
           tree->SetBranchAddress( "LocalProtCand_Ty", LocalProtCand_Ty );
           tree->SetBranchAddress( "LocalProtCand_TxSigma", LocalProtCand_TxSigma );
           tree->SetBranchAddress( "LocalProtCand_TySigma", LocalProtCand_TySigma );
+          */
+	  tree->SetBranchAddress( "nRPStripTrack", &nRPStripTrack );
+	  tree->SetBranchAddress( "RPStripTrack_x", RPStripTrack_x );
+	  tree->SetBranchAddress( "RPStripTrack_y", RPStripTrack_y );
+	  tree->SetBranchAddress( "RPStripTrack_xSigma", RPStripTrack_xSigma );
+	  tree->SetBranchAddress( "RPStripTrack_ySigma", RPStripTrack_ySigma );
+	  tree->SetBranchAddress( "RPStripTrack_arm", RPStripTrack_arm );
+	  tree->SetBranchAddress( "RPStripTrack_pot", RPStripTrack_pot );
+
+	  tree->SetBranchAddress( "nRPPixelTrack", &nRPPixelTrack );
+	  tree->SetBranchAddress( "RPPixelTrack_x", RPPixelTrack_x );
+	  tree->SetBranchAddress( "RPPixelTrack_y", RPPixelTrack_y );
+	  tree->SetBranchAddress( "RPPixelTrack_xSigma", RPPixelTrack_xSigma );
+	  tree->SetBranchAddress( "RPPixelTrack_ySigma", RPPixelTrack_ySigma );
+	  tree->SetBranchAddress( "RPPixelTrack_arm", RPPixelTrack_arm );
+	  tree->SetBranchAddress( "RPPixelTrack_pot", RPPixelTrack_pot );
+
+	  tree->SetBranchAddress( "nRPTimingTrack", &nRPTimingTrack );
+	  tree->SetBranchAddress( "RPTimingTrack_x", RPTimingTrack_x );
+	  tree->SetBranchAddress( "RPTimingTrack_y", RPTimingTrack_y );
+	  tree->SetBranchAddress( "RPTimingTrack_xSigma", RPTimingTrack_xSigma );
+	  tree->SetBranchAddress( "RPTimingTrack_ySigma", RPTimingTrack_ySigma );
+	  tree->SetBranchAddress( "RPTimingTrack_arm", RPTimingTrack_arm );
+	  tree->SetBranchAddress( "RPTimingTrack_pot", RPTimingTrack_pot );
+	  tree->SetBranchAddress( "RPTimingTrack_Time", RPTimingTrack_Time );
         }
 
         // Extra tracks on vertex's information
@@ -767,10 +873,12 @@ namespace ggll
         tree->SetBranchAddress( "JetCand_eta", JetCand_eta );
         tree->SetBranchAddress( "JetCand_phi", JetCand_phi );
         tree->SetBranchAddress( "JetCand_e", JetCand_e );
+	tree->SetBranchAddress( "JetCand_vz", JetCand_vz );
         tree->SetBranchAddress( "HighestJet_pt", &HighestJet_pt );
         tree->SetBranchAddress( "HighestJet_eta", &HighestJet_eta );
         tree->SetBranchAddress( "HighestJet_phi", &HighestJet_phi );
         tree->SetBranchAddress( "HighestJet_e", &HighestJet_e );
+	tree->SetBranchAddress( "HighestJet_vz", &HighestJet_vz );
         tree->SetBranchAddress( "SumJet_e", &SumJet_e );
         tree->SetBranchAddress( "Etmiss", &Etmiss );
         tree->SetBranchAddress( "Etmiss_phi", &Etmiss_phi );
