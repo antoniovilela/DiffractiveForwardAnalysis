@@ -245,6 +245,7 @@ GammaGammaLL::analyze( const edm::Event& iEvent, const edm::EventSetup& iSetup )
     }
 
     evt_.Weight = lumiWeights_.weight( npv0true );
+    evt_.PUWeightTrue = npv0true;
     LogDebug( "GammaGammaLL" ) << "Passed Pileup retrieval stage";
   }
 
